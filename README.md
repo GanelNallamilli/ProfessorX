@@ -2,7 +2,7 @@
 EEG operated raspbery pi (model 4b) vehicle, using the muse headband to detect jaw clenching and head orientation.
 ## Setup
 1. Make sure to use the Mind Monitor app to transfer eeg data to your local computer from your phone, using the OSC protocol.   
-2. Ensure the muse headband has connected correctly to your phone.
+2. Ensure the muse headband has connected correctly to your phone via bluetooth.
 3. Connect the motor pins accordingly and update the pin number in movement.py.
 4. Connect the ultra sonic sensor trig and echo pins to the pi, and update the pin numbers in distance.py.
 5. In main.py, ensure local_ip is set to the local_ip of the computer running the main.py scripted along with setting the required port, line 232.
