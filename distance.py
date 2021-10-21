@@ -1,5 +1,6 @@
 import RPi.GPIO as GPIO
 import time
+#returns the distance from vehicle to the nearest object using an ultra sonic sensor.
 def getDistance():
     GPIO.setmode(GPIO.BCM)
     TRIG = 4
