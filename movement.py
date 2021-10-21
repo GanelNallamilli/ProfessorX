@@ -7,6 +7,7 @@ BackwardLeft=20
 ForwardRight=19
 BackwardRight=16
 
+#check method to make sure the pin connections are correct.
 def run():
     global ForwardLeft,BackwardLeft,ForwardRight,BackwardRight
     mode=GPIO.getmode()
