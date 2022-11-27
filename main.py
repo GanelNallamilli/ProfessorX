@@ -11,14 +11,15 @@ import pandas as pd
 from scipy.fftpack import rfft,rfftfreq 
 import numpy as np
 import socket
-import movement as m
 import sys
 import time
-import RPi.GPIO as GPIO
-import distance as d
+import movement as m
 
 from pythonosc import dispatcher
 from pythonosc import osc_server
+
+
+'''Main script used to control the vehicle using a MUSE headband.'''
 
 eegTP9Array = []
 eegAF7Array = []
@@ -36,19 +37,15 @@ limiter = False
 
 sample = 256
 
-#will keep the scripted running for 90 seconds.
 def stoppingTime():
     print("STARTED COUNT DOWN")
     print("Current state: RIGHT")
     print("Blink to change rotation")
     print("Tilt head forward to go forward")
     print("Tilt head bakcward to go backwards")
-    m.run()
     time.sleep(90)
-    GPIO.cleanup()
     os._exit(0)
 
-#Detects the orientation of the headband.
 def dataGyro(none: float,accForBack: float,accLeftRight: float,accZ: float):
     global turn_drive_toggle,left_right_toggle,limitDrive,forward_Back
     if((accForBack > 0.5)):
@@ -69,8 +66,7 @@ def dataGyro(none: float,accForBack: float,accLeftRight: float,accZ: float):
 #method called by dispatcher to receive eeg data.
 def data(eeg1: float,eeg2: float,eeg3: float,eeg4: float,eeg5: float,eeg6: float):
     global boolean
-    if(d.getDistance() > 10):
-        plotData(eeg2,eeg3,eeg4,eeg6)
+    plotData(eeg2,eeg3,eeg4,eeg6)
     if(boolean == True):
         boolean = False
         stoppingTime()
@@ -116,20 +112,16 @@ def plotData(eegTP9,eegAF7,eegAF8,eegTP10):
         count = 0
         average = 0
         
-        #fast fourier transform
         yf = rfft(eegAF7Array[:sample])
         xf = rfftfreq(len(npArray[:sample]),1/sample)
         absYF = np.abs(yf)
         power_spectrum = np.square(absYF)
 
-        #notch out frequencies which do not matter.
         for j in range(0,len(xf)):
             if(float(xf[j]) > 48 and 52> float(xf[j])):
                 power_spectrum[j] = 0
             elif (xf[j]< 5 or xf[j]>= 50) :
                 power_spectrum[j] = 0
-        
-        #Finds the average of the 3 maximum common frequencies.
         arrayPower = findMaximumFreq(power_spectrum,xf)
         average = (arrayPower[0]+arrayPower[1]+arrayPower[2])/3
 
@@ -139,20 +131,18 @@ def plotData(eegTP9,eegAF7,eegAF8,eegTP10):
         indexRemember = -1
         count = 0
         tempEegAF7= eegAF7Array
-        #checks to see if the eeg signal has a reading above 1050
         for i in range(0,len(eegAF7Array)):
             if(float(eegAF7Array[i]) > 1050.0):
                 high1000  = True
                 indexRemember = i
                 break
-        #checks to see if the eeg signal has a reading above 700, after the reading above 1050. This detects the eye blink.
         if(high1000 == True):
             for i in range(indexRemember,len(eegAF7Array)):
                 if(float(eegAF7Array[i]) < 700.0):
                     low9000  = True
                     break
         
-        #If there is a reading above 1050, and then below 700, this is interpreted as an eye blink which toggles the car between going left or right.
+
         if(high1000 == True and low9000 == True and limiter == False):
             turn_drive_toggle = False
             limitDrive = True
@@ -166,24 +156,23 @@ def plotData(eegTP9,eegAF7,eegAF8,eegTP10):
             elif(left_right_toggle == True):
                 print("Right")
         
-        #checks how many reading are between 820-870 and 750 - 780
         for i in range(0, len(eegAF7Array)):
-            if((float(eegAF7Array[i])>820.0 and float(eegAF7Array[i])<870.0 ) or (float(eegAF7Array[i])>750.0  and float(eegAF7Array[i])<780.0 )):
+            if((float(eegAF7Array[i])>820.0 and float(eegAF7Array[i])>870.0 ) or (float(eegAF7Array[i])<750.0  and float(eegAF7Array[i])>780.0 )):
                 count = count + 1
         
-        #if the average of the top 3 power frequecies our 25 or above, the jaw must be clentched, therefore an action will take place.
         if(average >= 25):
-            #depending on the headband orientation, the car will move accordingly. 
+
             if(turn_drive_toggle == False):
                 if(left_right_toggle == False):
-                    m.left(1)
+                    print("Going Left")
                 elif(left_right_toggle == True):
-                    m.right(1)
+                    print("Going Right")
             elif(turn_drive_toggle == True):
                 if(forward_Back == True):
+                    print("Going Forward")
                     m.forward(1)
                 elif(forward_Back == False):
-                    m.reverse(1)
+                    print("Going Backward")
 
         
         eegTP9Array = []
@@ -191,11 +180,9 @@ def plotData(eegTP9,eegAF7,eegAF8,eegTP10):
         eegAF8Array = []
         eegTP10Array = []
         timeArray = []
-        #the last half of the eegAF7 channel will be used for the first half of the new one.
         for i in range (int(sample/2),len(eegAF7Array)):
             eegAF7Array[i-int(sample/2)] = tempEegAF7[i]
-
-#calculates the power spectrum of the eeg data. Returns a list of the top 80 frequent frequencies.  
+        
 def findMaximumFreq(power_spectrum,xf):
     top80Array = []
     count = 0
@@ -211,7 +198,6 @@ def findMaximumFreq(power_spectrum,xf):
                     break
     return top80Array
 
-#checks to see if value is in array, and returns a boolean accordingly.
 def isInArray(value,array):
         for i in range(0,len(array)):
             if(float(value) == float(array[i])):
@@ -220,24 +206,24 @@ def isInArray(value,array):
 
 #initalises the the port and ip to start receiving osc data packets.
 if __name__ == "__main__":
-    hostname = socket.gethostname()
-    local_ip = socket.gethostbyname(hostname) # change to ip address of device, if not local.
-    print("local_ip")
-    time.sleep(1)
-    print("Staring now!")
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--ip",
-        default=local_ip, help="The ip to listen on")
-    parser.add_argument("--port",
-        type=int, default=5000, help="The port to listen on")
-    args = parser.parse_args()
+    ip = ''
+    try:
+        print("Staring now!")
+        m.run()
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--ip",
+            default=ip, help="The ip to listen on")
+        parser.add_argument("--port",
+            type=int, default=5000, help="The port to listen on")
+        args = parser.parse_args()
 
-    dispatcher = dispatcher.Dispatcher()
-    dispatcher.map("/muse/acc",dataGyro)
-    dispatcher.map("/muse/eeg",data)
+        dispatcher = dispatcher.Dispatcher()
+        dispatcher.map("/muse/acc",dataGyro)
+        dispatcher.map("/muse/eeg",data)
 
-    server = osc_server.ThreadingOSCUDPServer(
-        (args.ip, args.port), dispatcher)
-    print("Serving on {}".format(server.server_address))
-    server.serve_forever()
-
+        server = osc_server.ThreadingOSCUDPServer(
+            (args.ip, args.port), dispatcher)
+        print("Serving on {}".format(server.server_address))
+        server.serve_forever()
+    except(NameError):
+        print("Could not connect")

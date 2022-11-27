@@ -1,32 +1,82 @@
+#Libraries
 import RPi.GPIO as GPIO
 import time
-#returns the distance from vehicle to the nearest object using an ultra sonic sensor.
-def getDistance():
+ 
+#GPIO Mode (BOARD / BCM)
+ 
+'''Used to calculate the distance to closest oject infront and behind vechicle'''
+def distanceFront():
     GPIO.setmode(GPIO.BCM)
-    TRIG = 4
-    ECHO = 18
-
-    GPIO.setup(TRIG,GPIO.OUT)
-    GPIO.setup(ECHO,GPIO.IN)
-
-    GPIO.output(TRIG, True)
+ 
+    #set GPIO Pins
+    GPIO_TRIGGER = 4
+    GPIO_ECHO = 17
+     
+    #set GPIO direction (IN / OUT)
+    GPIO.setup(GPIO_TRIGGER, GPIO.OUT)
+    GPIO.setup(GPIO_ECHO, GPIO.IN)
+    # set Trigger to HIGH
+    GPIO.output(GPIO_TRIGGER, True)
+ 
+    # set Trigger after 0.01ms to LOW
     time.sleep(0.00001)
-    GPIO.output(TRIG, False)
-
-    while GPIO.input(ECHO) == False:
-        start = time.time()
-
-    while GPIO.input(ECHO) == True:
-        end = time.time()
-
-    sig_time = end-start
-
-    #CM:
-    distance = sig_time / 0.000058
-    GPIO.cleanup()
-    #inches:
-    #distance = sig_time / 0.000148
+    GPIO.output(GPIO_TRIGGER, False)
+ 
+    StartTime = time.time()
+    StopTime = time.time()
+ 
+    # save StartTime
+    while GPIO.input(GPIO_ECHO) == 0:
+        StartTime = time.time()
+ 
+    # save time of arrival
+    while GPIO.input(GPIO_ECHO) == 1:
+        StopTime = time.time()
+ 
+    # time difference between start and arrival
+    TimeElapsed = StopTime - StartTime
+    # multiply with the sonic speed (34300 cm/s)
+    # and divide by 2, because there and back
+    distance = (TimeElapsed * 34300) / 2
     return distance
 
-
-
+def distanceBack():
+    GPIO.setmode(GPIO.BCM)
+ 
+    #set GPIO Pins
+    GPIO_TRIGGER = 3
+    GPIO_ECHO = 18
+     
+    #set GPIO direction (IN / OUT)
+    GPIO.setup(GPIO_TRIGGER, GPIO.OUT)
+    GPIO.setup(GPIO_ECHO, GPIO.IN)
+    # set Trigger to HIGH
+    GPIO.output(GPIO_TRIGGER, True)
+ 
+    # set Trigger after 0.01ms to LOW
+    time.sleep(0.00001)
+    GPIO.output(GPIO_TRIGGER, False)
+ 
+    StartTime = time.time()
+    StopTime = time.time()
+ 
+    # save StartTime
+    while GPIO.input(GPIO_ECHO) == 0:
+        StartTime = time.time()
+ 
+    # save time of arrival
+    while GPIO.input(GPIO_ECHO) == 1:
+        StopTime = time.time()
+ 
+    # time difference between start and arrival
+    TimeElapsed = StopTime - StartTime
+    # multiply with the sonic speed (34300 cm/s)
+    # and divide by 2, because there and back
+    distance = (TimeElapsed * 34300) / 2
+    return distance
+ 
+distFront = distanceFront()
+distBack= distanceBack()
+print ("Measured Front Distance = %.1f cm" % distFront)
+print ("Measured Back Distance = %.1f cm" % distBack)
+#GPIO.cleanup()
